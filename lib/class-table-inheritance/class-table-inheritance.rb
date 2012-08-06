@@ -175,7 +175,7 @@ module ActiveRecord
       define_method("association_id") do
         self.class.association_id
       end
-  
+
       alias :orig_has_attribute? :has_attribute?
 
       define_method("has_attribute?") do |name|
@@ -202,6 +202,12 @@ module ActiveRecord
         orig_attributes.merge( inherited_attributes )
       end
 
+      alias :orig_attribute_names :attribute_names
+
+      define_method("attribute_names") do
+        self.class.inherited_column_names + self.class.column_names
+      end
+  
     end # inherits_from
 
     def self.acts_as_superclass?
@@ -219,6 +225,12 @@ module ActiveRecord
     def inherits?
       self.class.inherits?
     end
+
+    def inherited_attribute_names
+      self.class.inherited_column_names
+    end
+
+    alias :inherited_column_names :inherited_attribute_names
 
   end
 end
