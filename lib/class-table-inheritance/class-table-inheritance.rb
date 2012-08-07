@@ -35,6 +35,10 @@ module ActiveRecord
         # Exclude the methods that the general class already has.
         inherited_method_names.reject { |c| self.reflections.map {|key, value| key.to_s }.include?(c) }
       end
+
+      def inherited_columns
+        association_class.columns
+      end
   
       def acts_as_superclass
         if self.column_names.include?("subtype")
@@ -137,23 +141,32 @@ module ActiveRecord
         self["#{association_id}_id"] = association.id
         true
       end
+
+      class << self
+        alias :orig_columns :columns
+      end
+
+      define_singleton_method("columns") do
+        orig_columns + inherited_columns
+      end
   
       class << self
         alias :orig_inspect :inspect
       end
   
-        define_singleton_method("inspect") do
-          if inherits?
-            if table_exists?
-              attr_list = columns.map { |c| "#{c.name}: #{c.type}" } * ', '
-              "#{super()}(#{attr_list})"
-            else
-              "#{super()}(Table doesn't exist)"
-            end
+      define_singleton_method("inspect") do
+        if inherits?
+          if table_exists?
+            attrs = Hash[ *columns.collect { |c| [ c.name, c.type ] }.flatten ]
+            attr_list = attrs.map { |k,v| "#{k}: #{v}" } * ', '
+            "#{self.name}(#{attr_list})"
           else
-            orig_inspect
+            "#{self.name}(Table doesn't exist)"
           end
+        else
+          orig_inspect
         end
+      end
 
       alias :orig_inspect :inspect
 
