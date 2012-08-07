@@ -149,22 +149,26 @@ module ActiveRecord
       define_singleton_method("columns") do
         orig_columns + inherited_columns
       end
+
+      class << self
+        alias :orig_column_names :column_names
+      end
+
+      define_singleton_method("column_names") do
+        self.columns.collect { |c| c.name }
+      end
   
       class << self
         alias :orig_inspect :inspect
       end
   
       define_singleton_method("inspect") do
-        if inherits?
-          if table_exists?
-            attrs = Hash[ *columns.collect { |c| [ c.name, c.type ] }.flatten ]
-            attr_list = attrs.map { |k,v| "#{k}: #{v}" } * ', '
-            "#{self.name}(#{attr_list})"
-          else
-            "#{self.name}(Table doesn't exist)"
-          end
+        if table_exists?
+          attrs = Hash[ *columns.collect { |c| [ c.name, c.type ] }.flatten ]
+          attr_list = attrs.map { |k,v| "#{k}: #{v}" } * ', '
+          "#{self.name}(#{attr_list})"
         else
-          orig_inspect
+          "#{self.name}(Table doesn't exist)"
         end
       end
 
