@@ -4,19 +4,11 @@
 module ActiveRecord
   class Base  
     attr_reader :reflection
+    cattr_accessor :association_id
 
     class << self
-
-      def association_id
-        defined?(@@association_id) && @@association_id
-      end
-  
-      def set_association_id(v)
-        @@association_id = v.to_s.gsub(/::/, '_').downcase.to_sym
-      end
-
       def association_class
-        @@association_class ||= Kernel.const_get(association_id.to_s.camelize)
+        @association_class ||= Kernel.const_get(association_id.to_s.camelize)
       end
 
       def inherited_column_names
@@ -64,7 +56,7 @@ module ActiveRecord
     end # class << self
     
     def self.inherits_from(assoc_id)
-      set_association_id assoc_id
+      self.association_id = assoc_id
       @inherits = true
 
       # add an association, and set the foreign key.
@@ -254,6 +246,10 @@ module ActiveRecord
 
     def inherited_attribute_names
       self.class.inherited_column_names
+    end
+
+    def association_class
+      self.class.association_class
     end
 
     alias :inherited_column_names :inherited_attribute_names
