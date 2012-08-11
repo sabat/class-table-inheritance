@@ -16,7 +16,7 @@ module ActiveRecord
       end
 
       def association_class
-        @@association_class ||= association_id.to_s.camelize.constantize
+        @@association_class ||= Kernel.const_get(association_id.to_s.camelize)
       end
 
       def inherited_column_names
@@ -42,7 +42,7 @@ module ActiveRecord
   
       def acts_as_superclass
         if self.column_names.include?("subtype")
-          @acts_as_superclass = true
+          @@acts_as_superclass = true
           def self.find(*args)
             super_classes = super.kind_of?(Array) ? super : [super]
             begin
@@ -200,17 +200,26 @@ module ActiveRecord
         orig_has_attribute?(name) || attributes.has_key?(name)
       end
 
+      define_method("inherited_attributes") do
+        Hash[ self.class.inherited_column_names.map { |c| [ c, self[c.to_sym] ] } ]
+      end
+
+      alias :orig_read_attribute :read_attribute
+
       define_method("read_attribute") do |attr_name|
         # Monkey-patching ActiveRecord this much is really
         # not a good idea, but I don't see a lot of choice.
         # By doing this, we're losing the type-casting that
         # AR does, but that is not a huge loss.
         #
-        self.send(attr_name.to_sym)
-      end
+        # self.send(attr_name.to_sym)
 
-      define_method("inherited_attributes") do
-        Hash[ self.class.inherited_column_names.map { |c| [ c, self[c.to_sym] ] } ]
+        attr_name = attr_name.to_sym
+        if self.has_attribute? attr_name
+          self.orig_read_attribute attr_name
+        elsif association_class.has_attribute?(attr_name)
+          association_class.read_attribute attr_name
+        end
       end
 
       alias :orig_attributes :attributes
@@ -228,7 +237,7 @@ module ActiveRecord
     end # inherits_from
 
     def self.acts_as_superclass?
-      @acts_as_superclass
+      @@acts_as_superclass
     end
     
     def self.inherits?
